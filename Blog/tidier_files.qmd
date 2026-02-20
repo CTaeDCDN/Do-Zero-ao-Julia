@@ -1,0 +1,359 @@
+---
+title: "Pacote TidierFiles.jl"
+description: |
+ Com a criação do `TidierFiles.jl`, os desenvolvedores acabaram com a necessidade de baixar diversos pacotes para ler arquivos de diferentes extensões. O pacote é abastecido por outros pacote de leitura e escrita de arquivos do próprio `Julia`, e oferece uma operação consistente em arquivos tabulares para mais de 10 extensões distintas.
+categories:
+  - Files
+  - Tidy 
+  - Pacotes 
+author:
+  - name: Nicole Fredericci
+    affiliation: "Universidade Estadual de Campinas"
+    url: https://github.com/NFredericci
+date: "2025-08-12"
+image: imagens/tidier_files.png
+lang: pt
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    self-contained: false
+engine: knitr
+draft: true
+---
+
+# Introdução
+
+:::{.justify}
+Se você é um usuário de `R`, em algum momento você precisou pesquisar qual pacote era necessário para importar ou exportar o arquivo com o qual você estava trabalhando. Isso porque a linguagem não possui um pacote que engloba a escrita e a leitura de diversos tipos de arquivos. 
+
+Diferentemente do `Python`, que possui a biblioteca `Pandas` para lidar com **quase** todas as principais extensões de arquivo utilizadas no mercado, deixando de fora arquivos como *Google Sheets* e *RData*. Além disso, não é possível exportar arquivos *SAS* e *SPSS*, apenas importar.
+
+Em `Julia`, com a criação do `TidierFiles.jl`, os desenvolvedores acabaram com este problema. O pacote é abastecido por outros pacote de leitura e escrita de arquivos (*CSV.jl*, *XLSX.jl*, *ReadStatTables.jl*, *Arrow.jl* e *Parquet2.jl*), e oferece uma operação consistente em arquivos tabulares, contando com alguns diferenciais referentes a outras linguagens por suportar mais de 10 extensões de arquivos diferentes.
+:::
+
+# Carregando o pacote
+
+:::{.justify}
+Para instalar os pacotes necessários e carregar seus comandos no ambiente, execute as seguintes linhas de código:
+:::
+
+```{julia}
+import Pkg  
+Pkg.add("TidierFiles")
+Pkg.add("DataFrames")
+
+using TidierFiles, DataFrames
+```
+
+:::{.justify}
+O pacote `DataFrames` será utilizado para criar os conjuntos de dados nos exemplos.
+:::
+
+# Leitura e escrita de arquivos
+
+## Arquivos delimitados
+
+:::{.justify}
+O `.csv` é o tipo de arquivo delimitado mais conhecido e mais usado no meio da computação, e usa vírgulas como separador (padrão internacional). Abaixo, a função `write_csv` exporta o *DataFrame* criado (`I_staff`) para o arquivo nomeado no segundo argumento da função. Esse arquivo é salvo no diretório atual de trabalho como padrão da função, mas o caminho de salvamento pode ser mudado no próprio nome do arquivo.
+
+Outros dois argumentos úteis em `write.csv` são `append`, para anexar o arquivo à um já existente, e `col_names`, para utilizar a primeira linha de observações como o nome das colunas. Caso não especificado no código, o padrão do primeiro argumento é `false`, e do segundo, `true`.
+:::
+
+```{julia}
+I_staff = DataFrame(
+    nome = ["Ana", "Tiago", "Laura"],
+    idade = [25, 30, 22]
+)
+
+write_csv(I_staff, "idade_staff.csv") 
+```
+
+:::{.justify}
+Para ler arquivos `.csv`, a função `read_csv` lida tanto com arquivos em diretórios do computador como com links. O primeiro exemplo mostra o número de pesquisas sobre o esporte Cricket, separados por país, desde a Copa Mundial de Cricket de 2015, através de um arquivo disponibilizado publicamente no *GitHub*. O argumento `n_max` permite a seleção do número máximo de linhas lidas, `skip` representa o número de linhas puladas na leitura do banco de dados e `col_select` faz a seleção das colunas lidas. O segudo exemplo traz a leitura do *DataFrame* criado anteriormente, contando que ele foi salvo no diretório atual de trabalho.
+:::
+
+> O argumento `col_names` e sua função foram mencionados no exemplo anterior!
+
+```{julia}
+read_csv("https://raw.githubusercontent.com/GoogleTrends/data/refs/heads/master/2015-507_cricketbycountry.csv", n_max = 10, col_names = false, skip = 2, col_select = ["Column1", "Column2"])
+```
+
+
+```{julia}
+read_csv("idade_staff.csv")
+```
+
+:::{.justify}
+A estrutura do código é a mesma para `read_tsv` e `read_delim`, para funções de leitura, e para `write_tsv`, função de escrita. Entretanto, não exista a função  `write_delim` por conta da prática de exportar arquivos `.csv` já incorporada no meio computacional, mas lê-los em `delim` por muitas vezes os separadores não serem vírgulas (padrão internacional, apesar de o padrão brasileiro e europeu ser ponto e vírgula).
+
+Por fim, a função `write_table` é feita para ler arquivos tabulares, geralmente delimitados por tabulação (*\t*) ou *espaços*. O exemplo abaixo transforma o *DataFrame* criado para um arquivo `.txt`, que será lido como uma tabela utilizando a função `read_table`. A sintaxe de ambas funções são semelhantes em essência às demonstradas para os outros tipos de dados delimitados. 
+:::
+
+```{julia}
+A_staff = DataFrame(
+    nome = ["Ana", "Tiago", "Laura"],
+    altura = [1.65, 1.80, 1.75]
+)
+
+write_table(A_staff, "altura_staff.txt")
+```
+
+```{julia}
+read_table("altura_staff.txt") #já está no diretório 
+```
+
+## Arquivos Excel
+
+:::{.justify}
+Arquivos Excel (`.xlsx`) podem ser exportados com a função `write_xlsx`, e sua estrutura é diferente da vista para dados delimitados. O primeiro argumento é o objeto a ser exportado, sendo que este pode corresponder a uma única aba ou em uma *tupla* (coleção ordenada) de objetos, como acontece no exemplo abaixo. Ou seja, o objeto "C_staff" está sendo escrito na aba nomeada "Cargo"; "A_staff" está sendo escrito em "Altura", nesta sequência.
+
+O argumento `path` é o caminho no qual o arquivo deve ser salvo. Se não especificado outro diretório, ele é salvo no diretório atual de trabalho. Há ainda um terceiro argumento, `overwrite`, para permitir ou não a substituição do arquivo anterior pelo atual de mesmo nome que está sendo salvo no lugar. Portanto, se você fez alterações em "C_staff" e mudou `overwrite = true` (o padrão é `false`), o arquivo encontrado agora em seu diretório possui a versão atualizada de "C_staff".
+
+Caso o padrão do argumento seja mantido e seja feita uma tentativa de mudança em um arquivo já existente, `Julia` retorna um erro avisando que o arquivo em questão já existe.
+:::
+
+> Se você fez alterações somente em uma aba, não é necessário reescrever toda a tupla, as alterações serão feitas somente na aba mencionada e o resto do arquivo permanecerá igual. 
+
+```{julia}
+C_staff = DataFrame(
+    nome = ["Ana", "Tiago", "Laura"],
+    cargo = ["Sênior", "Júnior", "Pleno"]
+)
+
+A_staff = DataFrame(
+    nome = ["Ana", "Tiago", "Laura"],
+    altura = [1.65, 1.80, 1.75]
+)
+
+write_xlsx(("Cargo" => C_staff, "Altura" => A_staff); path = "cargo_staff.xlsx")
+`````````
+
+:::{.justify}
+A função `read_xlsx`também apresenta argumentos para lidar com a estrutura de abas do *Excel*. O primeiro argumento, tal qual no exemplo abaixo, é o caminho do arquivo que deve ser lido e se não for especificado em `sheet` qual aba a ser lida, ele lê a primeira por padrão. A indexação das abas nesse argumento pode ser feita por nome ou número (ordem das abas da esquerda para a direita). 
+:::
+
+```{julia}
+read_xlsx("cargo_staff.xlsx") #lê a primeira aba
+```
+
+```{julia}
+read_xlsx("cargo_staff.xlsx", sheet = "Altura")
+read_xlsx("cargo_staff.xlsx", sheet = 2)
+```
+
+:::{.justify}
+Outros argumentos da função são:
+  - `range`: intervalo de células a ser lido; o padrão é a aba inteira. 
+  - `col_names`: se a primeira linha do intervalo é o cabeçalho ou não; o padrão é `true`.
+  - `col_types`: para indicar o tipo (numeric, character, etc.) de dados que as colunas contém; caso o argumento não seja usado, o programa adivinha o tipo.
+  - `missingstring`: o que será usado na substituição de valores faltantes; o padrão é `""`. 
+  - `skip`: número de linhas puladas na leitura do banco de dados; o padrão é 0.
+  - `n_max`: número máximo de linhas lidas; o padrão é `Inf` (todas as linhas).
+:::
+
+## Arquivos R Data
+
+não tem write e não suporta url
+
+## Arquivos JSON
+
+:::{.justify}
+Arquivos JSON (`.json`) podem ser lidos utilizando a função `read_json` do pacote `TidierFiles.jl`, fornecendo uma interface consistente, similar à de outras funções de leitura do pacote (como `read_csv` ou `read_xlsx`).
+
+O primeiro argumento da função é o caminho (`path`) para o arquivo JSON que deve ser lido. Este caminho pode ser para um arquivo local ou uma URL (endereço web), o que oferece grande flexibilidade para a ingestão de dados.
+:::
+
+```{julia}
+#using TidierFiles, DataFrames
+
+# Exemplo lendo um arquivo local
+#df_json_local = read_json("caminho/para/seuarquivo.json")
+
+# Exemplo lendo de uma URL
+df_json_web = read_json("https://jsonplaceholder.typicode.com/users")
+```
+
+:::{.justify}
+A função `read_json` visa carregar os dados contidos no arquivo JSON e convertê-los em uma estrutura tabular, tipicamente um DataFrame, mas compatível com o protocolo `Tables.jl`, desde que a estrutura do JSON seja apropriada (como um array de objetos onde cada objeto corresponde a uma linha).
+
+Outros argumentos-chave comuns nas funções de leitura do `TidierFiles.jl` também estão disponíveis para `read_json`, permitindo um controle refinado sobre o processo de leitura:
+:::
+
+:::{.justify}
+Outros argumentos da função são:
+
+- `path`: O caminho (local ou URL) para o arquivo JSON a ser lido. É o primeiro argumento posicional.
+
+- `missing_value`: String ou vetor de strings que devem ser interpretadas como valores faltantes (missing) nos dados. Padrão é `nothing`.
+
+- `col_select`: Vetor opcional de símbolos (Symbol) ou strings para selecionar quais colunas (campos/chaves) do JSON serão carregadas. Se omitido, todas são lidas. Padrão é `nothing`.
+
+- `skip`: Número de linhas (registros) a serem puladas no início do arquivo antes de iniciar a leitura. Padrão é 0.
+
+- `n_max`: Número máximo de linhas (registros) a serem lidas, após o `skip`. Se `Inf`, lê todos os registros disponíveis. Padrão é `Inf`.
+
+- `num_threads`: Controla o número de threads usadas para a leitura, útil para grandes arquivos para otimizar o desempenho.
+:::
+
+```{julia}
+# Exemplo usando argumentos para selecionar colunas e limitar linhas
+# Assumindo que "dados.json" tem as colunas "ID", "Nome", "Cidade"
+df_filtrado = read_json(
+    "dados.json", 
+    col_select = [:ID, :Nome], 
+    n_max = 100,
+    skip = 10
+)
+```
+
+:::{.justify}
+É importante notar que o `TidierFiles.jl` utiliza outros pacotes especializados (como `JSON3.jl` e `DataFrames.jl`) internamente para realizar a leitura e conversão para o formato tabular, garantindo velocidade e eficiência.
+
+O argumento-chave *null* é específico para o manuseio de valores *null* do JSON, determinando como eles são mapeados para tipos de dados `Julia`, mas a documentação do `TidierFiles.jl` sugere que o uso de `missing_value` é mais alinhado com a filosofia *Tidy*. Para a maioria dos casos de uso, ele tentará inferir os tipos de dados automaticamente.
+:::
+
+## Arquivos Parquet
+
+:::{.justify}
+Arquivos Parquet (`.parquet`) podem ser lidos com a função `read_parquet` do pacote `TidierFiles.jl`. Este formato é altamente eficiente para armazenamento e recuperação de dados analíticos, sendo ideal para grandes volumes, e é comumente usado em ambientes de big data.
+
+O argumento principal é o caminho (`path`) para o arquivo, que pode ser tanto um arquivo local quanto uma URL (endereço web), seguindo a mesma convenção de todas as funções de leitura do pacote. Por padrão, a função lê o arquivo inteiro e o converte em uma estrutura tabular, como um *DataFrame* de `Julia`.
+:::
+
+```{julia}
+using TidierFiles, DataFrames
+
+# Exemplo lendo um arquivo Parquet local
+df_parquet_local = read_parquet("caminho/para/seuarquivo.parquet")
+
+# Exemplo lendo um arquivo Parquet de uma URL (se disponível publicamente)
+# df_parquet_web = read_parquet("https://dados.exemplo.org/dataset.parquet")
+```
+
+:::{.justify}
+A grande vantagem da leitura de arquivos Parquet é a sua capacidade de suportar leitura parcial. Ou seja, você pode carregar apenas as colunas ou linhas que realmente precisa, o que otimiza significativamente o uso de memória e o tempo de processamento, especialmente com datasets muito grandes.
+
+Tal como em outras funções do `TidierFiles.jl`, a `read_parquet` também oferece argumentos-chave para o controle da leitura:
+:::
+
+:::{.justify}
+Outros argumentos da função são: 
+
+`path`: O caminho (local ou URL) para o arquivo Parquet a ser lido. É o primeiro argumento posicional.
+
+`col_select`: Vetor opcional de símbolos (*Symbol*) ou *strings* para selecionar quais colunas do Parquet serão carregadas. Uso recomendado para otimização de memória e tempo de leitura. Padrão é `nothing`.
+
+`skip`: Número de linhas (registros) a serem puladas no início do arquivo. Padrão é 0.
+
+`n_max`: Número máximo de linhas (registros) a serem lidas, após o `skip`. Útil para testar o arquivo com uma amostra. Padrão é `Inf`.
+
+`num_threads`: Controla o número de threads usadas para a leitura, ideal para acelerar o carregamento de grandes arquivos.
+:::
+
+```{julia}
+# Exemplo usando a leitura parcial para otimizar
+df_otimizado = read_parquet(
+    "dados_gigantes.parquet", 
+    col_select = [:ID_Usuario, :Valor_Transacao], # Carrega apenas 2 colunas
+    n_max = 5000 # Limita a 5000 linhas
+)
+```
+
+:::{.justify}
+O uso de col_select em particular é o recurso mais poderoso ao trabalhar com Parquet, pois o formato armazena dados em colunas, permitindo que o pacote subjacente ignore completamente as colunas não solicitadas, reduzindo a carga de I/O (entrada/saída de dados) do disco.
+:::
+
+## Leitura de Arquivos Genéricos (.txt)
+
+:::{.justify}
+A função read_table do pacote `TidierFiles.jl` atua como um leitor de arquivos genérico ou "coringa". Seu principal objetivo é simplificar a ingestão de dados, pois ela detecta automaticamente o formato do arquivo (como *CSV*, *TSV*, *Parquet*, *JSON*, entre outros) a partir de sua extensão (`.csv`, `.json`, etc.) ou cabeçalho, e, em seguida, chama a função de leitura apropriada (por exemplo, chama `read_csv` para um arquivo `.csv`).
+
+O primeiro argumento, como nas outras funções, é o caminho (*path*) para o arquivo, que pode ser tanto um caminho local quanto uma URL. O principal benefício de usar `read_table` é manter o seu código mais conciso, delegando a escolha do leitor específico ao pacote.
+:::
+
+```{julia}
+using TidierFiles, DataFrames
+
+# read_table detecta automaticamente o formato do arquivo
+df_generico_csv = read_table("dados.csv")
+
+# Se o arquivo fosse 'dados.parquet', a mesma função funcionaria:
+# df_generico_parquet = read_table("dados.parquet")
+```
+ 
+:::{.justify}
+Por ser uma função genérica, `read_table` aceita a união dos argumentos mais comuns a todos os formatos que ela suporta (arquivos delimitados, *JSON*, *Parquet*, etc.), garantindo uma interface consistente. Ela passará esses argumentos para a função de leitura específica que for selecionada.
+:::
+
+:::{.justify}
+Outros argumentos da função são: 
+
+`path`: O caminho (local ou URL) para o arquivo a ser lido. É o único argumento posicional obrigatório.
+
+`missing_value`: String ou vetor de strings que representam valores faltantes (missing) no arquivo.
+
+`col_names`: Indica se a primeira linha (após o `skip`) deve ser usada como nome das colunas.
+
+`col_select`: Vetor opcional de símbolos (Symbol) ou strings para selecionar quais colunas serão carregadas.
+
+`skip`: Número de linhas (registros) a serem puladas no início do arquivo.
+
+`n_max`: Número máximo de linhas (registros) a serem lidas, após o `skip`.
+
+`delim`: O delimitador (caractere separador) a ser usado, relevante para arquivos de texto delimitados (*CSV*, *TSV*).
+
+`num_threads`: Controla o número de threads usadas para acelerar o processo de leitura.
+:::
+
+```{julia}
+# read_table detecta que é um CSV e aplica os argumentos
+df_personalizado = read_table(
+    "dados.csv", 
+    delim = ';',
+    col_select = [:ID, :Nome], 
+    n_max = 50
+)
+```
+
+:::{.justify}
+É importante lembrar que, embora o `read_table` seja conveniente, se você souber o formato exato do arquivo (por exemplo, que é um *CSV*), usar a função específica (`read_csv`) pode oferecer mais argumentos de controle detalhados para aquele formato em particular, caso você precise deles.
+:::
+
+
+## Outros tipos de arquivo
+
+mencionar *Stata*, *Arrow*, *Parquet* e *Google Sheets* (que pode ser convertido para `.csv`, de todo modo)
+
+# Referências
+
+:::{.justify}
+Este post foi elaborado a partir da [documentação oficial](https://tidierorg.github.io/TidierFiles.jl/latest/) produzida pelos autores do pacote. 
+:::
+
+::: callout-note
+Ferramentas de IA foram utilizadas para correção ortográfica e aprimoramento do texto.
+:::
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
